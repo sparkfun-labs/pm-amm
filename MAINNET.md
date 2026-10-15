@@ -32,6 +32,7 @@ change** — only configuration + a deploy.
 | Date | Change | Slot / tx |
 |---|---|---|
 | 2026-09-23 | Sprint 25 (`sparkfun-labs/pm-amm#1`): entry-side surplus fix, Bet Vault v2, swap creator-fee fix, LP shares ∝ L_0, new protocol DAO. `.so` SHA-256 `5106fe71…` (identical to devnet) | slot 449755892, tx `49bmXfGR…FYNR6Z2` |
+| 2026-10-15 | Vault launch authority fix (`sparkfun-labs/pm-amm#9`): `launch_vault_market` / `launch_vault_group_leg` set `market.authority = vault.authority` (was the permissionless payer). `.so` SHA-256 `cd12a8a7…` (identical to devnet) | slot 457158853, tx `38tQQzzj…KwkNDUCm` |
 
 Upgrade notes (Sprint 25):
 - The `.so` (1,513,072 bytes) outgrew the 1,400,000-byte account, so
