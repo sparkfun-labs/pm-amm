@@ -22,6 +22,7 @@ Full guide: `MAINNET.md`. Key facts:
 - **Real USDC**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (Circle, 6 decimals).
 - **Protocol DAO** (50% of the swap fee): `4qXyczAr5DuBVaHUwmZT5Xt6hgQ6RwqBYcFGtrv8QEph`, compiled into `swap.rs` (was `HKLj…` before the Sprint 25 upgrade).
 - **Sprint 25 upgrade LIVE** (2026-09-23, slot 449755892): surplus fix + Bet Vault v2 + swap creator-fee fix + LP shares ∝ L_0 + new DAO. Same `.so` as devnet (SHA-256 `5106fe71…`).
+- **Vault launch authority fix LIVE** (2026-10-15, slot 457158853, `sparkfun-labs/pm-amm#9`): a vault-launched market's authority is the vault creator, not the launch payer. Same `.so` as devnet (SHA-256 `cd12a8a7…`).
 - First deployed with `MAINNET_MAX_LEN=1400000`; program data extended to **1,550,000 bytes** for Sprint 25 (an upgrade needs `solana program extend` whenever the `.so` outgrows it, plus ~7.7 SOL free on the authority for the buffer, refunded). On-chain IDL deferred (account `E4Fm…` partial, ~0.064 SOL parked; `anchor idl` lacks priority fees → congestion-blocked).
 - Deploy/upgrade: `MAINNET_RPC_URL=… MAINNET_AUTHORITY_KEYPAIR=… [MAINNET_MAX_LEN=1400000] pnpm run deploy:mainnet` (interactive confirm). **Needs a dedicated RPC** (public rate-limits the writes); the script passes `--use-rpc` + a priority fee (mainnet congestion → "Max retries" otherwise).
 - Front (Vercel prod env): `app/.env.mainnet.example` → `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta`, the program ID, the real USDC, a dedicated RPC. **Never set `MINT_AUTHORITY_KEY`** — faucet is hard-disabled on mainnet (UI hidden + API 503).
@@ -83,10 +84,10 @@ cd oracle && python3 test_properties.py    # 18 tests (paper properties A-G)
 | TS integration — `access_control.ts` | **6** | (same) |
 | TS integration — `vault.ts` (Sprint 22 commit vault) | **9** | (same) |
 | TS integration — `vault_group.ts` (Sprint 23 multi-outcome vault) | **9** | (same) |
-| TS integration — `lifecycle/bet_vault.ts` (Sprint 25 bet vault + surplus fix) | **21** | (same) |
+| TS integration — `lifecycle/bet_vault.ts` (Sprint 25 bet vault + surplus fix) | **22** | (same) |
 | Python oracle | **112** | `python3 oracle/test_oracle.py` |
 | Python properties | **18** | `python3 oracle/test_properties.py` |
-| **Total (Rust + TS + Python)** | **301** | (collected manually) |
+| **Total (Rust + TS + Python)** | **302** | (collected manually) |
 
 `anchor test` runs **surfpool**, not `solana-test-validator`: blocks (and the
 clock) advance per transaction, not with wall time. So `tests/lifecycle/*.ts`

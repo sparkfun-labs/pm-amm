@@ -10,6 +10,8 @@
  *   - regular deposit_liquidity at 70% and a legacy vault launched at 70% →
  *     after resolution + all claims, the market vault ≈ 0 (nothing stranded).
  *   - swapping without the creator fee account is creator-only.
+ *   - a stranger launching a legacy commitment vault doesn't become its
+ *     market.authority (can't resolve it).
  *
  * Localnet has no clock-warp, so the lifecycle runs on ONE real timeline:
  * every vault/market is opened in `before`, then the suite waits for the
@@ -504,14 +506,14 @@ describe("bet_vault v2 + entry-side surplus fix", () => {
     legacy.vault = vault;
   }
 
-  async function launchAndClaimLegacy() {
+  async function launchAndClaimLegacy(launcher: Keypair) {
     const id = nextId++;
     const market = pda([Buffer.from("market"), u64(id)], pid);
     const p = marketPdas(market);
     await m
       .launchVaultMarket(new anchor.BN(id))
       .accountsPartial({
-        payer: payer.publicKey,
+        payer: launcher.publicKey,
         vault: legacy.vault,
         market,
         collateralMint: usdcMint,
@@ -527,6 +529,7 @@ describe("bet_vault v2 + entry-side surplus fix", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .preInstructions([CU])
+      .signers([launcher])
       .rpc();
     for (const u of [alice, bob]) {
       await m
@@ -676,7 +679,14 @@ describe("bet_vault v2 + entry-side surplus fix", () => {
     await buy(carol, bets.C.market!, "yes", 20, betCollateral(bets.C.vault));
     await buy(carol, bets.D.market!, "yes", 20, betCollateral(bets.D.vault));
     assert.equal((await bal(betCollateral(bets.C.vault))) - before, 0.2 * ONE, "1% creator fee");
-    await launchAndClaimLegacy();
+  });
+
+  it("legacy vault: a stranger may launch, but the vault creator stays market.authority", async () => {
+    // launch_vault_market is permissionless: Mallory pays the rent, but must
+    // not become the market's resolver / fee recipient.
+    await launchAndClaimLegacy(mallory.kp);
+    const mk = await accs.market.fetch(legacy.vaultMarket!);
+    assert.ok(mk.authority.equals(payer.publicKey), "vault creator is market.authority");
   });
 
   it("LP dilution: a deposit + immediate withdraw can't skim the pot", async () => {
@@ -724,6 +734,15 @@ describe("bet_vault v2 + entry-side surplus fix", () => {
     for (const k of ["A", "B", "C", "F"]) await resolveBet(alice, bets[k], "yes");
     await resolveBet(alice, bets.D, "no");
     await resolveBet(alice, bets.I, "no");
+    // Mallory launched the legacy vault market but can't resolve it.
+    await expectErr(
+      m
+        .resolveMarket({ no: {} })
+        .accountsPartial({ signer: mallory.kp.publicKey, market: legacy.vaultMarket! })
+        .signers([mallory.kp])
+        .rpc(),
+      "Unauthorized",
+    );
     for (const market of [legacy.market!, legacy.vaultMarket!]) {
       await m.resolveMarket({ yes: {} }).accountsPartial({ signer: payer.publicKey, market }).rpc();
     }

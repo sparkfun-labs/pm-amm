@@ -1,6 +1,8 @@
 //! Launch the underlying pm-AMM market once the commit phase ends.
 //! Permissionless — any signer can trigger it. The caller pays the rent of
-//! the freshly-created Market, mints, vault, and Metaplex metadata accounts.
+//! the freshly-created Market, mints, vault, and Metaplex metadata accounts,
+//! but gains no rights: `market.authority` (resolver + creator fee) is the
+//! vault's creator, never the payer.
 //!
 //! What happens atomically in this single instruction:
 //!   1. Compute the launch price from the commit ratio
@@ -31,6 +33,7 @@ use crate::state::{CommitmentVault, Market};
 #[instruction(market_id: u64)]
 pub struct LaunchVaultMarket<'info> {
     /// Permissionless caller — pays the rent for the new Market/mints/vault.
+    /// Gets no authority over the market (see `market.authority` below).
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -132,7 +135,10 @@ pub fn handler(ctx: Context<LaunchVaultMarket>, market_id: u64) -> Result<()> {
     );
 
     let market = &mut ctx.accounts.market;
-    market.authority = ctx.accounts.payer.key();
+    // The vault creator, NOT the payer: `market.authority` resolves the market
+    // and receives the creator fee, and launch is permissionless — anyone
+    // front-running the launch would otherwise resolve the committers' pot.
+    market.authority = vault.authority;
     market.market_id = market_id;
     market.collateral_mint = ctx.accounts.collateral_mint.key();
     market.yes_mint = ctx.accounts.yes_mint.key();

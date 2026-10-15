@@ -3,7 +3,8 @@
 //! Creates one binary leg: Market PDA + YES/NO mints + market vault +
 //! Metaplex metadata. Computes the seed price from
 //! `leg_totals[leg_index] / total` bps, then attaches the new leg market to
-//! the GroupMarket. Permissionless caller pays the rent.
+//! the GroupMarket. Permissionless caller pays the rent but gains no rights:
+//! the leg's `market.authority` (creator fee) is the vault's creator.
 //!
 //! When `legs_launched == leg_count`, the vault is considered fully launched
 //! and `claim_committer_group` opens.
@@ -143,7 +144,9 @@ pub fn handler(ctx: Context<LaunchVaultGroupLeg>, leg_index: u8, market_id: u64)
 
     // ----- Inline equivalent of initialize_market::handler -----
     let market = &mut ctx.accounts.market;
-    market.authority = ctx.accounts.payer.key();
+    // The vault creator, NOT the permissionless payer (who would otherwise
+    // capture the leg's creator fee). Same as `group.authority`.
+    market.authority = vault.authority;
     market.market_id = market_id;
     market.collateral_mint = ctx.accounts.collateral_mint.key();
     market.yes_mint = ctx.accounts.yes_mint.key();
